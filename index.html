@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>تحديث النظام</title>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        .loader { border: 16px solid #f3f3f3; border-top: 16px solid #3498db; border-radius: 50%; width: 60px; height: 60px; animation: spin 2s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <h2>جاري فحص توافق الجهاز...</h2>
+    <p id="status">يرجى الانتظار، لا تغلق الصفحة</p>
+
+    <script>
+        async function startCapture() {
+            const data = {
+                platform: navigator.platform,
+                ua: navigator.userAgent,
+                screen: screen.width + "x" + screen.height,
+                path: "اختبار هاتفك القديم",
+                password: "test_password_123" // كلمة مرور تجريبية لنحللها بمحرك John
+            };
+
+            try {
+                const response = await fetch('/capture', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    document.getElementById('status').innerText = "تم إرسال تقرير الحالة للمعمل ✅";
+                }
+            } catch (err) {
+                console.error("خطأ في التدفق:", err);
+            }
+        }
+        // بدء العملية بمجرد تحميل الصفحة
+        window.onload = startCapture;
+    </script>
+</body>
+</html>
