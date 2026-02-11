@@ -139,4 +139,7 @@ if __name__ == '__main__':
     
     # تشغيل Flask على المنفذ المطلوب من Render
     port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=portif __name__ == '__main__':
+    # حل مشكلة Port Binding المذكورة في صورتك الأولى
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
